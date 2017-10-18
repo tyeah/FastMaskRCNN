@@ -46,7 +46,7 @@ tf.app.flags.DEFINE_string(
     'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_integer(
-    'im_batch', 1,
+    'im_batch', 64,
     'number of images in a mini-batch')
 
 
@@ -175,7 +175,7 @@ tf.app.flags.DEFINE_string(
     'as `None`, then the model_name flag is used.')
 
 tf.app.flags.DEFINE_integer(
-    'batch_size', 1,
+    'batch_size', 64,
     'The number of samples in each batch.')
 
 tf.app.flags.DEFINE_integer(
