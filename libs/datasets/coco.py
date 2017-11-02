@@ -94,6 +94,8 @@ def read(tfrecords_filename):
 
   if not isinstance(tfrecords_filename, list):
     tfrecords_filename = [tfrecords_filename]
+  print("tfrecords_filename: ", tfrecords_filename)
+  tfrecords_filename = ['/home/ye/Developer/projects/GraspNet3.0/Data/maskrcnn//records/depth_train.tfrecord']
   filename_queue = tf.train.string_input_producer(
     tfrecords_filename, num_epochs=100)
 
@@ -128,6 +130,7 @@ def read(tfrecords_filename):
   gt_masks = tf.decode_raw(features['label/gt_masks'], tf.uint8)
   gt_masks = tf.cast(gt_masks, tf.int32)
   gt_masks = tf.reshape(gt_masks, [num_instances, ih, iw])
+  #print([t.shape for t in [image, ih, iw, gt_boxes, gt_masks, num_instances, img_id]])
   
   return image, ih, iw, gt_boxes, gt_masks, num_instances, img_id
 

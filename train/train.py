@@ -170,15 +170,22 @@ def train():
                              FLAGS.im_batch,
                              is_training=True)
 
-    data_queue = tf.RandomShuffleQueue(capacity=32, min_after_dequeue=16,
+    data_queue = tf.RandomShuffleQueue(capacity=2, min_after_dequeue=1,
             dtypes=(
                 image.dtype, ih.dtype, iw.dtype, 
                 gt_boxes.dtype, gt_masks.dtype, 
                 num_instances.dtype, img_id.dtype)) 
     enqueue_op = data_queue.enqueue((image, ih, iw, gt_boxes, gt_masks, num_instances, img_id))
-    data_queue_runner = tf.train.QueueRunner(data_queue, [enqueue_op] * 4)
+    data_queue_runner = tf.train.QueueRunner(data_queue, [enqueue_op] * 1)
     tf.add_to_collection(tf.GraphKeys.QUEUE_RUNNERS, data_queue_runner)
     (image, ih, iw, gt_boxes, gt_masks, num_instances, img_id) =  data_queue.dequeue()
+    '''
+    image, ih, iw, gt_boxes, gt_masks, num_instances, img_id = tf.train.shuffle_batch(
+        [image, ih, iw, gt_boxes, gt_masks, num_instances, img_id], batch_size=FLAGS.batch_size, num_threads=10,
+        capacity = 1000 + 3 * FLAGS.batch_size,
+        min_after_dequeue=1000)
+    '''
+
     im_shape = tf.shape(image)
     image = tf.reshape(image, (im_shape[0], im_shape[1], im_shape[2], 3))
 
