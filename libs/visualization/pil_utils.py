@@ -5,6 +5,24 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 FLAGS = tf.app.flags.FLAGS
 _DEBUG = False
 
+'''
+cls_name = np.array([  'background', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
+                   'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+                   'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+                   'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+                   'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+                   'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+                   'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+                   'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+                   'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+                   'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+                   'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
+                   'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+                   'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+                   'scissors', 'teddy bear', 'hair drier', 'toothbrush'])
+'''
+cls_name = np.array([  'background', 'bottle'])
+
 def draw_img(step, image, name='', image_height=1, image_width=1, rois=None):
     #print("image")
     #print(image)
@@ -51,18 +69,4 @@ def draw_bbox(step, image, name='', image_height=1, image_width=1, bbox=None, la
     return source_img.save(FLAGS.train_dir + '/est_imgs/test_' + name + '_' +  str(step) +'.jpg', 'JPEG')
 
 def cat_id_to_cls_name(catId):
-    cls_name = np.array([  'background', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
-                       'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
-                       'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
-                       'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
-                       'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-                       'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
-                       'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
-                       'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
-                       'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
-                       'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-                       'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
-                       'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
-                       'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
-                       'scissors', 'teddy bear', 'hair drier', 'toothbrush'])
     return cls_name[catId]

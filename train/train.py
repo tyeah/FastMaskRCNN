@@ -27,7 +27,7 @@ from train.train_utils import _configure_learning_rate, _configure_optimizer, \
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 from libs.datasets import download_and_convert_coco
 #from libs.datasets.download_and_convert_coco import _cat_id_to_cls_name
-from libs.visualization.pil_utils import cat_id_to_cls_name, draw_img, draw_bbox
+from libs.visualization.pil_utils import cls_name, cat_id_to_cls_name, draw_img, draw_bbox
 
 FLAGS = tf.app.flags.FLAGS
 resnet50 = resnet_v1.resnet_v1_50
@@ -193,7 +193,7 @@ def train():
     logits, end_points, pyramid_map = network.get_network(FLAGS.network, image,
             weight_decay=FLAGS.weight_decay, is_training=True)
     outputs = pyramid_network.build(end_points, im_shape[1], im_shape[2], pyramid_map,
-            num_classes=81,
+            num_classes=len(cls_name),
             base_anchors=9,
             is_training=True,
             gt_boxes=gt_boxes, gt_masks=gt_masks,
