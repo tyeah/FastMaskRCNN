@@ -8,6 +8,13 @@ import tensorflow as tf
 #                  restore
 ##########################
 tf.app.flags.DEFINE_string(
+    'phase', 'train',
+    'train/evaluate')
+
+##########################
+#                  restore
+##########################
+tf.app.flags.DEFINE_string(
     'train_dir', './output/mask_rcnn/',
     'Directory where checkpoints and event logs are written to.')
 

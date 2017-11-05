@@ -28,7 +28,13 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 from libs.datasets import download_and_convert_coco
 #from libs.datasets.download_and_convert_coco import _cat_id_to_cls_name
 from libs.visualization.pil_utils import cls_name, cat_id_to_cls_name, draw_img, draw_bbox
-from skimage.transform import resize
+#from skimage.transform import resize
+#from cv2 import resize
+#from scipy.misc import imresize as resize
+from scipy.ndimage import zoom
+
+import evaluate_metric
+
 
 FLAGS = tf.app.flags.FLAGS
 resnet50 = resnet_v1.resnet_v1_50
@@ -237,15 +243,21 @@ def build_model():
             final_box, final_cls, final_prob, final_gt_cls, gt, tmp_0, tmp_1, tmp_2, tmp_3, tmp_4
 
 def decode_output(h, w, boxes, masks):
-    masks = np.argmax(masks, axis=-1)
-    ret = np.zeros((h, w), dtype=np.int32)
+    masks = np.argmax(masks, axis=-1)#.astype(np.float32)
+    ret = np.zeros((len(masks), h, w))
     boxes = boxes.astype(np.int32)
     for i, (box, mask) in enumerate(zip(boxes, masks)):
-        mask = resize(mask * (i + 1), (box[3] - box[1], box[2] - box[0]))
-        print(mask.shape, box[3], box[1], box[2], box[0], h, w, ret.shape)
-        ret[box[1] : box[3], box[0] : box[2]] = mask
+        temp = np.zeros((h, w), dtype=np.int32)
+        #mask_ = (resize(mask, (box[3] - box[1], box[2] - box[0])) > 0)
+        mask_ = zoom(mask, ((box[3] - box[1]) * 1. / mask.shape[0], (box[2] - box[0]) * 1. / mask.shape[1]))
+        ret[i, box[1] : box[3], box[0] : box[2]] = mask_
     return ret
 
+def decode_gt_masks(gt_masks):
+    ret = np.zeros((gt_masks.shape[1], gt_masks.shape[2]))
+    for i in range(gt_masks.shape[0]):
+        ret += (i + 1) * gt_masks[i]
+    return ret
 
 def evaluate():
     ret = build_model()
@@ -274,15 +286,44 @@ def evaluate():
                                          start=True))
 
     tf.train.start_queue_runners(sess=sess, coord=coord)
+    id_map_stack = []
+    gt_id_map_stack = []
+    num_instances_ = 0
+    scores_concat = []
+    tp_concat = []
+    fp_concat = []
     for i in range(10):
-        final_box_, mask_, score_, cropped_rois_, gt_masks_, gt_boxes_, img_id_ = sess.run([final_box, mask['mask'], mask['score'], cropped_rois, gt_masks, gt_boxes, img_id])
-        print(final_box_.shape, mask_.shape, score_.shape, gt_masks_.shape, cropped_rois_.shape, gt_boxes_.shape)
-        print(gt_boxes_)
-        print(final_box_)
-        exit()
-        # id_map = decode_output(120, 160, final_box_, mask_)
-        # print(id_map.shape)
-        # print(np.unique(id_map))
+        input_image_, final_box_, mask_, score_, cropped_rois_, gt_masks_, gt_boxes_, img_id_ = sess.run([
+            input_image, final_box, mask['mask'], mask['score'], cropped_rois, gt_masks, gt_boxes, img_id])
+        # print(final_box_.shape, mask_.shape, score_.shape, gt_masks_.shape, cropped_rois_.shape, gt_boxes_.shape)
+        # print(gt_boxes_)
+        # print(final_box_)
+        num_instances_ += len(score_)
+        id_map = decode_output(120, 160, final_box_, mask_)
+        id_map_stack.append(id_map)
+        #id_map = decode_output(120, 160, gt_boxes_, gt_masks_)
+        #print(np.unique(id_map))
+        gt_id_map = gt_masks_
+        gt_id_map_stack.append(gt_id_map)
+        scores_concat.append(score_)
+        tp, fp = evaluate_metric.tp_fp(id_map,gt_id_map, 0.1)
+        print(id_map.shape, gt_id_map.shape)
+        print(len(tp))
+        for j in xrange(len(tp)):
+            tp_concat.append(tp[j])
+            fp_concat.append(fp[j])
+
+    scores_ = np.concatenate(scores_concat, axis=0)
+    print(len(np.unique(id_map)))
+    print(len(tp))
+    print(len(fp))
+    print(num_instances_)
+    print(len(scores_))
+    print("-" * 80)
+    #tp, fp = evaluate_metric.tp_fp(id_map, gt_id_map)
+    #print(id_map.shape, gt_id_map.shape, scores_.shape, num_instances_, tp.shape, fp.shape)
+    mAP_ = evaluate_metric.mAP(tp_concat, fp_concat, scores_, num_instances_)
+
 
 def train():
     ret = build_model()
@@ -394,7 +435,7 @@ def train():
             summary_writer.add_summary(summary_str, step)
             summary_writer.flush()
 
-        if (step % 10000 == 0 or step + 1 == FLAGS.max_iters) and step != 0:
+        if (step % 3000 == 0 or step + 1 == FLAGS.max_iters) and step != 0:
             checkpoint_path = os.path.join(logdir, 
                                            FLAGS.dataset_name + '_' + FLAGS.network + '_model.ckpt')
             #checkpoint_path = os.path.join(FLAGS.train_dir, 
@@ -407,5 +448,7 @@ def train():
 
 
 if __name__ == '__main__':
-    #train()
-    evaluate()
+    if FLAGS.phase == 'train':
+        train()
+    elif FLAGS.phase == 'evaluate':
+        evaluate()
