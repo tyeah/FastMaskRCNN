@@ -189,7 +189,7 @@ tf.app.flags.DEFINE_string(
     'The classes to classify.')
 
 tf.app.flags.DEFINE_integer(
-    'image_min_size', 640,
+    'image_min_size', 120,
     'resize image so that the min edge equals to image_min_size')
 
 #####################
