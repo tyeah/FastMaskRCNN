@@ -558,6 +558,17 @@ def build_losses(pyramid, outputs, gt_boxes, gt_masks,
                               refine_batch_pos, refine_batch, \
                               mask_batch_pos, mask_batch]
 
+# def decode_output(outputs):
+#     """decode outputs into boxes and masks"""
+# 
+#     template = tf.zeros()
+#     def remap_mask(box, mask):
+#         box = tf.cast(box, tf.int32)
+#         mask = tf.resize_images(mask, (box[3] - box[1], box[2] - box[0]))
+#         return mask
+#     
+#     return [], outputs['final_boxes']['box'], outputs['final_boxes']['cls']
+
 def decode_output(outputs):
     """decode outputs into boxes and masks"""
     return [], [], []

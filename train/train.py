@@ -28,6 +28,7 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 from libs.datasets import download_and_convert_coco
 #from libs.datasets.download_and_convert_coco import _cat_id_to_cls_name
 from libs.visualization.pil_utils import cls_name, cat_id_to_cls_name, draw_img, draw_bbox
+from skimage.transform import resize
 
 FLAGS = tf.app.flags.FLAGS
 resnet50 = resnet_v1.resnet_v1_50
@@ -159,7 +160,7 @@ def restore(sess):
            print ('Checking your params %s' %(checkpoint_path))
            raise
     
-def train():
+def build_model():
     """The main function that runs training"""
 
     ## data
@@ -209,6 +210,12 @@ def train():
     final_box = outputs['final_boxes']['box']
     final_cls = outputs['final_boxes']['cls']
     final_prob = outputs['final_boxes']['prob']
+    # for k, v in outputs.iteritems():
+    #     try:
+    #         print(k, v.keys())
+    #     except:
+    #         print(k, type(v))
+    # print(outputs['pred_masks'])
     final_gt_cls = outputs['final_boxes']['gt_cls']
     gt = outputs['gt']
 
@@ -226,6 +233,61 @@ def train():
     tmp_4 = outputs['tmp_4']
     ############################
 
+    return outputs, gt_masks, total_loss, regular_loss, img_id, losses, gt_boxes, batch_info, input_image, \
+            final_box, final_cls, final_prob, final_gt_cls, gt, tmp_0, tmp_1, tmp_2, tmp_3, tmp_4
+
+def decode_output(h, w, boxes, masks):
+    masks = np.argmax(masks, axis=-1)
+    ret = np.zeros((h, w), dtype=np.int32)
+    boxes = boxes.astype(np.int32)
+    for i, (box, mask) in enumerate(zip(boxes, masks)):
+        mask = resize(mask * (i + 1), (box[3] - box[1], box[2] - box[0]))
+        print(mask.shape, box[3], box[1], box[2], box[0], h, w, ret.shape)
+        ret[box[1] : box[3], box[0] : box[2]] = mask
+    return ret
+
+
+def evaluate():
+    ret = build_model()
+    outputs, gt_masks, total_loss, regular_loss, img_id, losses, gt_boxes, batch_info, input_image, \
+            final_box, final_cls, final_prob, final_gt_cls, gt, tmp_0, tmp_1, tmp_2, tmp_3, tmp_4 = ret
+    mask = outputs['mask']
+    cropped_rois = outputs['roi']['cropped_rois']
+
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.95, allow_growth=True)
+    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    init_op = tf.group(
+            tf.global_variables_initializer(),
+            tf.local_variables_initializer()
+            )
+    sess.run(init_op)
+
+    ## restore
+    restore(sess)
+
+    ## main loop
+    coord = tf.train.Coordinator()
+    threads = []
+    # print (tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS))
+    for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+        threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
+                                         start=True))
+
+    tf.train.start_queue_runners(sess=sess, coord=coord)
+    for i in range(10):
+        final_box_, mask_, score_, cropped_rois_, gt_masks_, gt_boxes_, img_id_ = sess.run([final_box, mask['mask'], mask['score'], cropped_rois, gt_masks, gt_boxes, img_id])
+        print(final_box_.shape, mask_.shape, score_.shape, gt_masks_.shape, cropped_rois_.shape, gt_boxes_.shape)
+        print(gt_boxes_)
+        print(final_box_)
+        exit()
+        # id_map = decode_output(120, 160, final_box_, mask_)
+        # print(id_map.shape)
+        # print(np.unique(id_map))
+
+def train():
+    ret = build_model()
+    outputs, gt_masks, total_loss, regular_loss, img_id, losses, gt_boxes, batch_info, input_image, \
+            final_box, final_cls, final_prob, final_gt_cls, gt, tmp_0, tmp_1, tmp_2, tmp_3, tmp_4 = ret
 
     ## solvers
     global_step = slim.create_global_step()
@@ -333,8 +395,10 @@ def train():
             summary_writer.flush()
 
         if (step % 10000 == 0 or step + 1 == FLAGS.max_iters) and step != 0:
-            checkpoint_path = os.path.join(FLAGS.train_dir, 
+            checkpoint_path = os.path.join(logdir, 
                                            FLAGS.dataset_name + '_' + FLAGS.network + '_model.ckpt')
+            #checkpoint_path = os.path.join(FLAGS.train_dir, 
+            #                               FLAGS.dataset_name + '_' + FLAGS.network + '_model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
 
         if coord.should_stop():
@@ -343,4 +407,5 @@ def train():
 
 
 if __name__ == '__main__':
-    train()
+    #train()
+    evaluate()
